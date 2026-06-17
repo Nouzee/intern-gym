@@ -8,6 +8,21 @@
 
 仓库内置一个 import-compatible `mock xtquant`、浏览器实时 `mock-feed`、策略日线 `mock-research-api` 和裁剪样本数据。目标不是复刻完整生产系统，而是让候选人在可控范围内处理我们真实遇到过的问题：实时数据刷新、券商队列语义、effective day 对齐、旧数据恢复、移动端展示，以及日线策略研究流程。
 
+## 项目提交概要
+
+- **本项目选择：** 策略方向（strategy-project）
+- **完成目录：** `strategy-project/`
+- **最终主推策略：** **S2 reversal_liquidity** — 首日下跌且 turnover 高于样本中位数的 IPO，在次日开盘买入，持有最多 3 个交易日
+- **S0 baseline_momentum：** 题目要求的官方 baseline，首日涨幅 >5% 做多 momentum，结果不达标
+- **S1 reversal：** 方向验证策略，验证首日下跌后反转方向成立
+- **S3 reversal_liquidity_deep：** sensitivity variant only，不作为主结论
+- **核心输出：** `reports/research_report.md`、`reports/trades.csv`、`reports/metrics.json`
+- **测试覆盖：** 22 个单元测试，通过 `pytest` 验证 feature schema、trade log columns、cost sanity、metrics schema
+- **外部数据：** 10 支股票 pilot，仅作补充背景，不进入核心回测信号
+- **结果不构成生产交易建议**
+
+完整运行命令见 `strategy-project/README.md`。
+
 ## Quick Start
 
 ```bash

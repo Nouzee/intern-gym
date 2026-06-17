@@ -5,11 +5,13 @@ import pandas as pd
 from costs import apply_slippage, trade_cost
 
 
-def generate_baseline_trades(
+def generate_trades(
     features: pd.DataFrame,
     daily_bars: pd.DataFrame,
     cost_model: dict[str, float],
     *,
+    signal_column: str = "baseline_momentum_signal",
+    strategy_version: str = "baseline_momentum",
     notional_per_trade: float = 100_000.0,
     holding_days: int = 3,
     stop_loss_pct: float = 0.08,
@@ -18,7 +20,7 @@ def generate_baseline_trades(
     bars = normalize_daily(daily_bars)
     trades = []
 
-    for feature in features[features["baseline_signal"]].to_dict("records"):
+    for feature in features[features[signal_column]].to_dict("records"):
         symbol = str(feature["symbol"])
         entry_date = str(feature["entry_date"])
         symbol_bars = bars[bars["symbol"] == symbol].sort_values("trade_date").reset_index(drop=True)
@@ -52,7 +54,7 @@ def generate_baseline_trades(
                 exit_row = row
                 exit_reason = "take_profit"
                 break
-        holding_days = int(path[path["trade_date"] <= str(exit_row["trade_date"])].shape[0])
+        actual_holding_days = int(path[path["trade_date"] <= str(exit_row["trade_date"])].shape[0])
 
         exit_raw = float(exit_row["close"])
         exit_price = apply_slippage(exit_raw, "sell", cost_model)
@@ -80,12 +82,41 @@ def generate_baseline_trades(
                 "net_pnl": net_pnl,
                 "return": net_pnl / buy_notional if buy_notional else 0.0,
                 "exit_reason": exit_reason,
-                "holding_days": holding_days,
-                "strategy_version": "baseline_first_day_momentum_daily",
+                "holding_days": actual_holding_days,
+                "strategy_version": strategy_version,
             }
         )
 
     return pd.DataFrame(trades)
+
+
+def generate_baseline_trades(
+    features: pd.DataFrame,
+    daily_bars: pd.DataFrame,
+    cost_model: dict[str, float],
+    *,
+    notional_per_trade: float = 100_000.0,
+    holding_days: int = 3,
+    stop_loss_pct: float = 0.08,
+    take_profit_pct: float = 0.20,
+) -> pd.DataFrame:
+    """Backward-compatible wrapper. Uses baseline_signal (or baseline_momentum_signal)."""
+    signal_col = (
+        "baseline_signal"
+        if "baseline_signal" in features.columns and features["baseline_signal"].any()
+        else "baseline_momentum_signal"
+    )
+    return generate_trades(
+        features,
+        daily_bars,
+        cost_model,
+        signal_column=signal_col,
+        strategy_version="baseline_first_day_momentum_daily",
+        notional_per_trade=notional_per_trade,
+        holding_days=holding_days,
+        stop_loss_pct=stop_loss_pct,
+        take_profit_pct=take_profit_pct,
+    )
 
 
 def normalize_daily(frame: pd.DataFrame) -> pd.DataFrame:
